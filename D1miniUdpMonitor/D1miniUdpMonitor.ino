@@ -9,6 +9,7 @@
 #include "DNSServer.h" // for redirecting to the configuration portal
 #include "ESP8266WebServer.h" // for serving the configuration portal
 #include "WiFiManager.h" // WiFi configuration
+#include "MegunoLink.h"
 
 #include "DHT.h" // Adafruit DHT-sensor-library
 
@@ -56,7 +57,6 @@ IPAddress destinationIp(DENSTINATION_IP_ADDRESS);
 // will overflow after 4,294,967,295 measurements
 unsigned long transmitCount = 0; 
 
-
 // setup ---------------------------------------------------------------------- setup
 void setup()
 {
@@ -81,7 +81,7 @@ void setup()
 
   // Start WiFi UDP communication library
   udp.begin(SOURCE_UDP_PORT);
-
+  
   // Done
   Serial.println("Startup complete, debug serial stream:");
 }
@@ -109,40 +109,32 @@ void loop()
 
   // Start assembling UDP packet
   udp.beginPacket(destinationIp, DESTINATION_UDP_PORT);
+
+  TimePlot Plot("DHT", udp);
  
   // Add plot display information every so often for late listeners
   if (transmitCount % 10 == 0)
   {
-    udp.write("{TIMEPLOT|SET|title=Remote Temperature & Humidity}\n");
-    udp.write("{TIMEPLOT|SET|x-label=Time}\n");
-    udp.write("{TIMEPLOT|SET|y-label=Degrees C / % Relative Humidity}\n");
-    udp.write("{TIMEPLOT|STYLE|Raw Temperature:bs#}\n");
-    udp.write("{TIMEPLOT|STYLE|Raw Humidity:ro#}\n");
-    udp.write("{TIMEPLOT|STYLE|Filtered Temperature:bn_2}\n");
-    udp.write("{TIMEPLOT|STYLE|Filtered Humidity:rn_2}\n");
+    Plot.SetTitle("Remote Temperature & Humidity");
+    Plot.SetXlabel("Time");
+    Plot.SetYlabel("Degrees C / % Relative Humidity");
+    Plot.SetSeriesProperties("Raw Temperature", TimePlot::Blue, TimePlot::NoLine, 1, TimePlot::Square);
+    Plot.SetSeriesProperties("Raw Humidity", TimePlot::Red, TimePlot::NoLine, 1, TimePlot::Circle);
+    Plot.SetSeriesProperties("Filtered Temperature", TimePlot::Blue, TimePlot::Solid, 2, TimePlot::NoMarker);
+    Plot.SetSeriesProperties("Filtered Humidity", TimePlot::Red, TimePlot::Solid, 2, TimePlot::NoMarker);
   }
 
   // Add raw measurements
-  udp.write("{TIMEPLOT|DATA|Raw Temperature|T|");
-  udp.print(temperature);
-  udp.write("}\n");
-  udp.write("{TIMEPLOT|DATA|Raw Humidity|T|");
-  udp.print(humidity);
-  udp.write("}\n");
-  
-  // Add filtered measurements
-  udp.write("{TIMEPLOT|DATA|Filtered Temperature|T|");
-  udp.print(temperatureFilter.Current());
-  udp.write("}\n");
-  udp.write("{TIMEPLOT|DATA|Filtered Humidity|T|");
-  udp.print(humidityFilter.Current());
-  udp.write("}\n");
+  Plot.SendData("Raw Temperature", temperature);
+  Plot.SendData("Raw Humidity", humidity);
+  Plot.SendData("Filtered Temperature", temperatureFilter.Current());
+  Plot.SendData("Filtered Humidity", humidityFilter.Current());
 
   // Send and increment counter
   udp.endPacket();
   transmitCount++;
 
-  // Wait 2000 ms (2 seconds) before making next measurment
-  delay(2000);
+  // Wait a little while before making next measurment
+  delay(2000); // delay in milliseconds
 }
 
