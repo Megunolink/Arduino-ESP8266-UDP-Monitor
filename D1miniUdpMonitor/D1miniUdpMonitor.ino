@@ -9,7 +9,6 @@
 #include "DNSServer.h" // for redirecting to the configuration portal
 #include "ESP8266WebServer.h" // for serving the configuration portal
 #include "WiFiManager.h" // WiFi configuration
-#include "MegunoLink.h"
 
 #include "DHT.h" // Adafruit DHT-sensor-library
 
